@@ -1,0 +1,289 @@
+/* Deep premium dark mode profile matching the image asset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #080808;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.wallpaper-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.center-glow {
+    position: absolute;
+    width: 45vh;
+    height: 45vh;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.03) 50%, rgba(0,0,0,0) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+#bracketCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.nodes-overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+}
+
+.bracket-node {
+    position: absolute;
+    width: 4.6vh;
+    height: 4.6vh;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #141414;
+    border: 2px solid #2a2a2a;
+    color: #ffffff;
+    font-size: 1.1vh;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bracket-node.round-0 {
+    border-color: #3a3a3a;
+}
+
+.bracket-node.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    background: rgba(20, 20, 20, 0.4);
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.bracket-node.advanced {
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+}
+
+.trophy-slot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 12vh; 
+    height: 12vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.trophy-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.4));
+}
+
+.bracket-node img.flag-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.bracket-node.loser {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    background: rgba(20, 20, 20, 0.8) !important;
+    box-shadow: none !important;
+}
+
+.bracket-node.loser img.flag-img {
+    filter: grayscale(90%) brightness(55%);
+    opacity: 0.65;
+    transition: all 0.4s ease;
+}
+
+/* Breathing pulse animation for live matches */
+@keyframes liveBreathing {
+    0% { border-color: #00bfff; box-shadow: 0 0 4px #00bfff; }
+    50% { border-color: #ffffff; box-shadow: 0 0 14px #00bfff; }
+    100% { border-color: #00bfff; box-shadow: 0 0 4px #00bfff; }
+}
+
+.bracket-node.live-pulse {
+    animation: liveBreathing 2s infinite ease-in-out;
+    border-width: 2.5px !important;
+    z-index: 20; /* Ensure active matches sit strictly on top layout layers */
+}
+
+.live-score-badge {
+    position: absolute;
+    bottom: -8px;
+    background: #00bfff;
+    color: #fff;
+    font-size: 0.9vh;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(0,191,255,0.4);
+}
+
+/* ================= INTERACTIVE STATS PANEL SYSTEM ================= */
+.stats-panel {
+    position: absolute;
+    top: 0;
+    right: -360px; /* Hidden offscreen by default */
+    width: 340px;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 100;
+    transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 40px 24px;
+    color: #ffffff;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Toggle hook applied via JavaScript classes */
+.stats-panel.panel-open {
+    right: 0;
+}
+
+.close-panel-btn {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 32px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close-panel-btn:hover {
+    color: #ff3b30;
+}
+
+.stats-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin-top: 20px;
+}
+
+/* Match Header Meta Card */
+.panel-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.panel-header .stage-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #ffcc00;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.panel-header .match-clock {
+    font-size: 13px;
+    background: rgba(0, 191, 255, 0.15);
+    color: #00bfff;
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 5px;
+    font-weight: 700;
+}
+
+/* Score Board Grid */
+.panel-scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.panel-team-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.panel-score-display {
+    font-size: 32px;
+    font-weight: 800;
+    padding: 0 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Stat Row Metric Bars */
+.stat-row {
+    margin-bottom: 22px;
+}
+
+.stat-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.stat-title {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.stat-bar-track {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    display: flex;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    transition: width 0.6s cubic-bezier(0.1, 1, 0.1, 1);
+}
+
+/* Bright neon selection border added for active clicks */
+.bracket-node.selected-view {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 14px #ffffff, 0 4px 12px rgba(0,0,0,0.8) !important;
+    transform: translate(-50%, -50%) scale(1.12); /* Pop out node slightly when viewing stats */
+    z-index: 50;
+}
