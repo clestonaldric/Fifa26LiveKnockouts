@@ -13,20 +13,24 @@ body, html {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* FIX: Changed from vh/vw flex to absolute window tracking to eliminate mobile address bar offsets */
 .wallpaper-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 /* Update the ambient gold backdrop element scale */
 .center-glow {
     position: absolute;
-    width: 45vmin; /* Changed from vh */
-    height: 45vmin; /* Changed from vh */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 45vmin; 
+    height: 45vmin; 
     background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.03) 50%, rgba(0,0,0,0) 100%);
     z-index: 1;
     pointer-events: none;
@@ -44,6 +48,8 @@ body, html {
 
 .nodes-overlay {
     position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     z-index: 3;
@@ -52,20 +58,20 @@ body, html {
 /* Update the Flag Node dimensions to match canvas coordinates */
 .bracket-node {
     position: absolute;
-    width: 4.6vmin; /* Changed from vh */
-    height: 4.6vmin; /* Changed from vh */
+    width: 4.6vmin; 
+    height: 4.6vmin; 
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: #141414;
     border: 2px solid #2a2a2a;
     color: #ffffff;
-    font-size: 1.1vmin; /* Changed from vh */
+    font-size: 1.1vmin; 
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
     user-select: none;
 }
 
@@ -91,8 +97,8 @@ body, html {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
-    width: 12vmin; /* Changed from vh */
-    height: 12vmin; /* Changed from vh */
+    width: 12vmin; 
+    height: 12vmin; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -136,7 +142,7 @@ body, html {
 .bracket-node.live-pulse {
     animation: liveBreathing 2s infinite ease-in-out;
     border-width: 2.5px !important;
-    z-index: 20; /* Ensure active matches sit strictly on top layout layers */
+    z-index: 20; 
 }
 
 /* Responsive adjustment for the live-score flags overlay badges */
@@ -145,7 +151,7 @@ body, html {
     bottom: -8px;
     background: #00bfff;
     color: #fff;
-    font-size: 0.9vmin; /* Changed from vh */
+    font-size: 0.9vmin; 
     padding: 2px 6px;
     border-radius: 10px;
     font-weight: 800;
@@ -156,7 +162,7 @@ body, html {
 .stats-panel {
     position: absolute;
     top: 0;
-    right: -360px; /* Hidden offscreen by default */
+    right: -360px; 
     width: 340px;
     height: 100%;
     background: rgba(10, 10, 10, 0.75);
@@ -170,7 +176,6 @@ body, html {
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Toggle hook applied via JavaScript classes */
 .stats-panel.panel-open {
     right: 0;
 }
@@ -198,7 +203,6 @@ body, html {
     margin-top: 20px;
 }
 
-/* Match Header Meta Card */
 .panel-header {
     text-align: center;
     margin-bottom: 30px;
@@ -224,7 +228,6 @@ body, html {
     font-weight: 700;
 }
 
-/* Score Board Grid */
 .panel-scoreboard {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -246,7 +249,6 @@ body, html {
     font-variant-numeric: tabular-nums;
 }
 
-/* Stat Row Metric Bars */
 .stat-row {
     margin-bottom: 22px;
 }
@@ -282,25 +284,36 @@ body, html {
     transition: width 0.6s cubic-bezier(0.1, 1, 0.1, 1);
 }
 
-/* Bright neon selection border added for active clicks */
 .bracket-node.selected-view {
     border-color: #ffffff !important;
     box-shadow: 0 0 14px #ffffff, 0 4px 12px rgba(0,0,0,0.8) !important;
-    transform: translate(-50%, -50%) scale(1.12); /* Pop out node slightly when viewing stats */
+    transform: translate(-50%, -50%) scale(1.12); 
     z-index: 50;
 }
 
-/* Mobile Optimization Override Profile */
+/* MOBILE SHIFTS: Scales down the asset sizes on phones so they don't look crowded */
 @media (max-width: 480px) {
+    .bracket-node {
+        width: 4.0vmin; 
+        height: 4.0vmin;
+    }
+    .trophy-slot {
+        width: 9.5vmin;
+        height: 9.5vmin;
+    }
+    .center-glow {
+        width: 40vmin;
+        height: 40vmin;
+    }
     .stats-panel {
-        width: 100%; /* Take up full width on mobile screens instead of popping out slightly */
-        right: -100%; /* Cache offscreen uniformly */
+        width: 100%; 
+        right: -100%; 
         padding: 50px 20px;
     }
     .stats-panel.panel-open {
         right: 0;
     }
     .panel-score-display {
-        font-size: 26px; /* Slightly adjust scoreboard typography scale on mobile devices */
+        font-size: 26px; 
     }
 }
