@@ -22,10 +22,11 @@ body, html {
     justify-content: center;
 }
 
+/* Update the ambient gold backdrop element scale */
 .center-glow {
     position: absolute;
-    width: 45vh;
-    height: 45vh;
+    width: 45vmin; /* Changed from vh */
+    height: 45vmin; /* Changed from vh */
     background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.03) 50%, rgba(0,0,0,0) 100%);
     z-index: 1;
     pointer-events: none;
@@ -48,16 +49,17 @@ body, html {
     z-index: 3;
 }
 
+/* Update the Flag Node dimensions to match canvas coordinates */
 .bracket-node {
     position: absolute;
-    width: 4.6vh;
-    height: 4.6vh;
+    width: 4.6vmin; /* Changed from vh */
+    height: 4.6vmin; /* Changed from vh */
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: #141414;
     border: 2px solid #2a2a2a;
     color: #ffffff;
-    font-size: 1.1vh;
+    font-size: 1.1vmin; /* Changed from vh */
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -65,8 +67,6 @@ body, html {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     user-select: none;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .bracket-node.round-0 {
@@ -84,14 +84,15 @@ body, html {
     box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
 }
 
+/* Update the Center Trophy scale footprint */
 .trophy-slot {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
-    width: 12vh; 
-    height: 12vh;
+    width: 12vmin; /* Changed from vh */
+    height: 12vmin; /* Changed from vh */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -138,12 +139,13 @@ body, html {
     z-index: 20; /* Ensure active matches sit strictly on top layout layers */
 }
 
+/* Responsive adjustment for the live-score flags overlay badges */
 .live-score-badge {
     position: absolute;
     bottom: -8px;
     background: #00bfff;
     color: #fff;
-    font-size: 0.9vh;
+    font-size: 0.9vmin; /* Changed from vh */
     padding: 2px 6px;
     border-radius: 10px;
     font-weight: 800;
@@ -286,4 +288,19 @@ body, html {
     box-shadow: 0 0 14px #ffffff, 0 4px 12px rgba(0,0,0,0.8) !important;
     transform: translate(-50%, -50%) scale(1.12); /* Pop out node slightly when viewing stats */
     z-index: 50;
+}
+
+/* Mobile Optimization Override Profile */
+@media (max-width: 480px) {
+    .stats-panel {
+        width: 100%; /* Take up full width on mobile screens instead of popping out slightly */
+        right: -100%; /* Cache offscreen uniformly */
+        padding: 50px 20px;
+    }
+    .stats-panel.panel-open {
+        right: 0;
+    }
+    .panel-score-display {
+        font-size: 26px; /* Slightly adjust scoreboard typography scale on mobile devices */
+    }
 }
