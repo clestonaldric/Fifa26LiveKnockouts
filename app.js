@@ -207,7 +207,7 @@ async function fetchAndApplyLiveScores() {
 
 function syncLayoutPositions() {
     const cx = canvas.width / 2; const cy = canvas.height / 2;
-    const baseRadius = window.innerHeight;
+    const baseRadius = Math.min(window.innerWidth, window.innerHeight);
 
     for (let round = 0; round < TOTAL_ROUNDS; round++) {
         const radiusPx = (RADII_PROPORTIONS[round] / 100) * baseRadius;
@@ -344,7 +344,7 @@ closePanelBtn.addEventListener('click', () => {
 function drawCanvasContext() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const cx = canvas.width / 2; const cy = canvas.height / 2;
-    const baseRadius = window.innerHeight;
+    const baseRadius = Math.min(window.innerWidth, window.innerHeight);
 
     for (let round = 0; round < TOTAL_ROUNDS - 1; round++) {
         const currentRadius = (RADII_PROPORTIONS[round] / 100) * baseRadius;
