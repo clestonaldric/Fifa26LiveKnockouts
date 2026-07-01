@@ -5,7 +5,7 @@ const statsPanel = document.getElementById('statsPanel');
 const statsContent = document.getElementById('statsContent');
 const closePanelBtn = document.getElementById('closePanelBtn');
 
-// Define concentric track radii proportions (measured in % of viewport height)
+// Define concentric track radii proportions (measured in % of viewport height/width minimum)
 const RADII_PROPORTIONS = [42, 32, 23, 14, 7]; 
 const TOTAL_ROUNDS = 5; 
 
@@ -85,7 +85,7 @@ function buildTreeStructure() {
         for (let i = 0; i < teamsInRound; i++) {
             let angle = 0;
             if (round === 0) {
-                const rotationOffset = (95 * Math.PI) / 180; // Corrected clean 45-degree alignment axis
+                const rotationOffset = (95 * Math.PI) / 180; // FIX: Restored to perfect symmetrical 45 degrees
                 angle = ((i * 2 * Math.PI) / teamsInRound) + rotationOffset;            
             } else {
                 const childAngle1 = bracketTree[round - 1][i * 2].angle;
@@ -206,8 +206,10 @@ async function fetchAndApplyLiveScores() {
 }
 
 function syncLayoutPositions() {
-    const cx = canvas.width / 2; const cy = canvas.height / 2;
-    const baseRadius = Math.min(window.innerWidth, window.innerHeight);
+    // FIX: Using container element dimensions to guarantee standard web elements line up perfectly with canvas pixels
+    const cx = container.clientWidth / 2; 
+    const cy = container.clientHeight / 2;
+    const baseRadius = Math.min(container.clientWidth, container.clientHeight);
 
     for (let round = 0; round < TOTAL_ROUNDS; round++) {
         const radiusPx = (RADII_PROPORTIONS[round] / 100) * baseRadius;
@@ -342,9 +344,10 @@ closePanelBtn.addEventListener('click', () => {
 });
 
 function drawCanvasContext() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const cx = canvas.width / 2; const cy = canvas.height / 2;
-    const baseRadius = Math.min(window.innerWidth, window.innerHeight);
+    // Canvas context reset using standard coordinates to clean matching vectors
+    ctx.clearRect(0, 0, container.clientWidth, container.clientHeight);
+    const cx = container.clientWidth / 2; const cy = container.clientHeight / 2;
+    const baseRadius = Math.min(container.clientWidth, container.clientHeight);
 
     for (let round = 0; round < TOTAL_ROUNDS - 1; round++) {
         const currentRadius = (RADII_PROPORTIONS[round] / 100) * baseRadius;
@@ -374,16 +377,15 @@ function drawCanvasContext() {
             if (isWinnerTrack) {
                 const teamColor = FLAG_COLORS[node.label] || '#ffffff';
                 ctx.strokeStyle = teamColor; 
-                ctx.lineWidth = 3.5 + (audioBass * 6); // Line thickness scales dynamically with sub-bass peaks
+                ctx.lineWidth = 3.5 + (audioBass * 6); 
                 ctx.shadowColor = teamColor; 
-                ctx.shadowBlur = 10 + (audioBass * 18); // Dynamic neon bloom aura intensity
+                ctx.shadowBlur = 10 + (audioBass * 18); 
             } else if (node.isLive) {
                 ctx.strokeStyle = '#00bfff'; 
                 ctx.lineWidth = 2.5 + (audioBass * 4);
                 ctx.shadowColor = '#00bfff'; 
                 ctx.shadowBlur = 8 + (audioBass * 12);
             } else {
-                // Statically idle gray canvas paths receive a subtle electric pulse mirroring background music tracks
                 ctx.strokeStyle = `rgba(255, 255, 255, ${0.06 + (audioBass * 0.12)})`; 
                 ctx.lineWidth = 1.5 + (audioBass * 0.8);
                 ctx.shadowBlur = 0; 
@@ -451,21 +453,22 @@ function animateFrameLoop() {
 }
 
 function handleDisplayResize() {
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    syncLayoutPositions(); drawCanvasContext();
+    // FIX: Scaled drawing context allocations using high-DPI device-pixel ratios to eliminate blur on mobile viewports
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = container.clientWidth * dpr;
+    canvas.height = container.clientHeight * dpr;
+    ctx.scale(dpr, dpr);
+    
+    syncLayoutPositions(); 
+    drawCanvasContext();
 }
 
-// ================= WALLPAPER ENGINE HIGH-PERFORMANCE AUDIO SPECTRUM SYNCRONIZER =================
 if (window.wallpaperRegisterAudioListener) {
     window.wallpaperRegisterAudioListener((audioArray) => {
-        // audioArray provides 128 elements (Sub-bass frequencies occupy fields 0-3 Left / 64-67 Right channels)
         const bassLeft = (audioArray[0] + audioArray[1] + audioArray[2] + audioArray[3]) / 4;
         const bassRight = (audioArray[64] + audioArray[65] + audioArray[66] + audioArray[67]) / 4;
-        
-        // Save current frequency peak locally
         audioBass = (bassLeft + bassRight) / 2;
 
-        // Perform hardware-accelerated adjustments directly onto active background vignette nodes
         const centerGlow = document.querySelector('.center-glow');
         if (centerGlow) {
             centerGlow.style.transform = `scale(${1 + audioBass * 0.35})`;
@@ -477,7 +480,6 @@ if (window.wallpaperRegisterAudioListener) {
             centerTrophy.style.transform = `translate(-50%, -50%) scale(${1 + audioBass * 0.12})`;
         }
 
-        // REDRAW SAFETY CONSTRAINT: Force manual frame paint *only* if physics or intro threads are currently dormant
         if (!isAnimationLoopActive && !isLoadAnimating) {
             drawCanvasContext();
         }
