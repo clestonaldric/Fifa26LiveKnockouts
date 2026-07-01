@@ -55,37 +55,49 @@ body, html {
     z-index: 3;
 }
 
-/* Flag Node Container - Background set to transparent to eliminate subpixel dark bleed */
+/* Flag Node Container - Cleaned of all borders and background pixel bleeding */
 .bracket-node {
     position: absolute;
     width: 4.6vmin; 
     height: 4.6vmin; 
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: transparent; /* FIX: Eliminated #141414 to completely stop brown/dark edge bleeding */
+    background: transparent !important; /* Completely transparent so no dark color can bleed through */
+    border: 0 !important;               /* Forcefully strip all standard physical borders */
+    outline: none !important;
+    
+    /* ULTRA-CRITICAL SAFARI/MOBILE WEBKIT BUG FIX: */
+    /* Forces iOS to clip the subpixels flawlessly without creating a ghost ring artifact */
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    
     color: #ffffff;
     font-size: 1.1vmin; 
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden; /* Ensures flag overscans match the circle geometry perfectly */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease, box-shadow 0.4s ease;
     user-select: none;
 }
 
-/* Keeps separate placeholder rules intact for unpopulated entries */
-.bracket-node.empty {
-    border: 1px dashed rgba(255, 255, 255, 0.15);
-    background: rgba(20, 20, 20, 0.4);
-    color: rgba(255, 255, 255, 0.2);
-    overflow: visible;
+/* Ensure round-0 never re-injects a ghost border color */
+.bracket-node.round-0 {
+    border: 0 !important;
+    border-color: transparent !important;
 }
 
-/* Upgraded Advanced State: Replaced desaturated brown/gold with a highly luminous neon aura */
+/* Kept separate so empty placeholders remain visible as dashed circular outlines */
+.bracket-node.empty {
+    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+    background: rgba(20, 20, 20, 0.4) !important;
+    color: rgba(255, 255, 255, 0.2);
+    -webkit-mask-image: none; /* Bypass mask for empty placeholders */
+}
+
+/* Uses an outer spread box-shadow instead of a layout border to preserve flag image size */
 .bracket-node.advanced {
-    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.45), 0 0 12px rgba(255, 215, 0, 0.25);
+    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.45), 0 0 12px rgba(255, 215, 0, 0.25) !important;
 }
 
 /* Center Trophy scale footprint */
