@@ -13,11 +13,21 @@ let bracketTree = [];
 let particles = [];
 let isAnimationLoopActive = false;
 
+// Global dimension caching properties to stop frame dropping and layout thrashing
+let cachedCx = 0;
+let cachedCy = 0;
+let cachedBaseRadius = 0;
+
+// Hardware Accelerated Rotation Variables
+let globalRotation = 0;
+const ROTATION_SPEED = 0.0012; 
+
 // Audio Responsiveness and Intro Animation Lifecycle Controllers
 let audioBass = 0;
 let loadProgress = 0;
 let isLoadAnimating = true;
 
+// Change this section in your app.js
 const initialTeams = [
     "de", "py", "fr", "se", "za", "ca", "nl", "ma", 
     "pt", "hr", "es", "at", "us", "ba", "be", "sn", 
@@ -85,7 +95,7 @@ function buildTreeStructure() {
         for (let i = 0; i < teamsInRound; i++) {
             let angle = 0;
             if (round === 0) {
-                const rotationOffset = (95 * Math.PI) / 180; // FIX: Restored to perfect symmetrical 45 degrees
+                const rotationOffset = (45 * Math.PI) / 180; // FIXED: Aligned perfectly to clean 45-degree corner axes
                 angle = ((i * 2 * Math.PI) / teamsInRound) + rotationOffset;            
             } else {
                 const childAngle1 = bracketTree[round - 1][i * 2].angle;
@@ -116,10 +126,12 @@ function getRoundProgress(round) {
 
 async function fetchAndApplyLiveScores() {
     try {
+        // Fetch real-time data directly from the live ESPN scoreboard endpoint
         const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260720');
         const data = await response.json();
         if (!data.events) return;
 
+        // Reset live-status flags across all nodes before processing fresh updates
         for (let round = 0; round < TOTAL_ROUNDS; round++) {
             bracketTree[round].forEach(node => { 
                 node.isLive = false; 
@@ -127,9 +139,9 @@ async function fetchAndApplyLiveScores() {
             });
         }
 
+        // Parse matches and map advancing winners/live score differentials dynamically
         for (let round = 1; round < TOTAL_ROUNDS; round++) {
             const teamsInRound = 32 / Math.pow(2, round);
-            
             for (let i = 0; i < teamsInRound; i++) {
                 const child1 = bracketTree[round - 1][i * 2];
                 const child2 = bracketTree[round - 1][i * 2 + 1];
@@ -140,7 +152,7 @@ async function fetchAndApplyLiveScores() {
                         if (!comps[0] || !comps[1]) return false;
                         const t1 = ESPN_TO_ISO[comps[0].team.abbreviation];
                         const t2 = ESPN_TO_ISO[comps[1].team.abbreviation];
-return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t2 === child1.label);
+						return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t2 === child1.label);
                     });
 
                     if (match) {
@@ -159,6 +171,7 @@ return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t
                                 const currentScore1 = parseInt(c1Data.score) || 0;
                                 const currentScore2 = parseInt(c2Data.score) || 0;
 
+                                // If a score increases while live, trigger particle bursts
                                 if (child1.score !== undefined && currentScore1 > child1.score) {
                                     triggerParticleBlast(child1.x, child1.y, FLAG_COLORS[child1.label] || '#ffffff');
                                 }
@@ -186,17 +199,12 @@ return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t
                 }
             }
         }
+        
         syncLayoutPositions();
         drawCanvasContext();
 
         if (isLoadAnimating && loadProgress === 0) {
             animateLoadLoop();
-        }
-
-        const openNode = document.querySelector('.bracket-node.selected-view');
-        if (openNode) {
-            const [r, idx] = openNode.id.replace('node-', '').split('-');
-            updateStatsPanelUI(bracketTree[r][idx].matchDataRef);
         }
 
     } catch (error) {
@@ -205,17 +213,16 @@ return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t
 }
 
 function syncLayoutPositions() {
-    // FIX: Using container element dimensions to guarantee standard web elements line up perfectly with canvas pixels
-    const cx = container.clientWidth / 2; 
-    const cy = container.clientHeight / 2;
-    const baseRadius = Math.min(container.clientWidth, container.clientHeight);
-
     for (let round = 0; round < TOTAL_ROUNDS; round++) {
-        const radiusPx = (RADII_PROPORTIONS[round] / 100) * baseRadius;
+        const radiusPx = (RADII_PROPORTIONS[round] / 100) * cachedBaseRadius;
         
         bracketTree[round].forEach((node, index) => {
-            node.x = cx + radiusPx * Math.cos(node.angle);
-            node.y = cy + radiusPx * Math.sin(node.angle);
+            let finalAngle = node.angle + globalRotation;
+            
+            const offsetX = radiusPx * Math.cos(finalAngle);
+            const offsetY = radiusPx * Math.sin(finalAngle);
+            node.x = cachedCx + offsetX;
+            node.y = cachedCy + offsetY;
 
             let nodeDOM = document.getElementById(`node-${round}-${index}`);
             if (!nodeDOM) {
@@ -235,7 +242,6 @@ function syncLayoutPositions() {
             
             if (node.isEmpty) {
                 nodeDOM.innerHTML = ""; 
-                nodeDOM.style.cursor = "default";
             } else {
                 let scoreOverlay = "";
                 if (node.isLive && node.score !== undefined) {
@@ -246,29 +252,28 @@ function syncLayoutPositions() {
                     <img src="https://flagcdn.com/w160/${node.label}.png" class="flag-img" alt="${node.label}">
                     ${scoreOverlay}
                 `;
-                nodeDOM.style.cursor = node.matchDataRef ? "pointer" : "default";
             }
-            nodeDOM.style.left = `${node.x}px`; nodeDOM.style.top = `${node.y}px`;
 
-            if (round > 0) {
+            // FIXED: Leverages absolute translate3d hardware composition mapping to eliminate rotation lag entirely
+            let transformString = `translate3d(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px), 0)`;
+            if (nodeDOM.classList.contains('selected-view')) {
+                transformString += ` scale(1.12)`;
+            } else if (round > 0) {
                 let currentRingOpacity = getRoundProgress(round - 1);
                 nodeDOM.style.opacity = currentRingOpacity;
-                if (!nodeDOM.classList.contains('selected-view')) {
-                    nodeDOM.style.transform = `translate(-50%, -50%) scale(${0.7 + currentRingOpacity * 0.3})`;
-                }
+                transformString += ` scale(${0.7 + currentRingOpacity * 0.3})`;
             } else {
                 nodeDOM.style.opacity = 1;
             }
+            nodeDOM.style.transform = transformString;
         });
     }
 }
 
 function handleNodeClickEvent(element, node) {
     if (!node.matchDataRef) return; 
-
     document.querySelectorAll('.bracket-node').forEach(n => n.classList.remove('selected-view'));
     element.classList.add('selected-view');
-
     updateStatsPanelUI(node.matchDataRef);
     statsPanel.classList.add('panel-open');
 }
@@ -302,22 +307,23 @@ function updateStatsPanelUI(match) {
         return (v1 / (v1 + v2)) * 100;
     };
 
+    const homeColor = FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]] || '#ffffff';
+    const awayColor = FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]] || '#ffffff';
+
     statsContent.innerHTML = `
         <div class="panel-header">
             <div class="stage-title">${stageName}</div>
             <div class="match-clock">${clockDisplay}</div>
         </div>
-
         <div class="panel-scoreboard">
-            <div class="panel-team-name" style="color:${FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]]}">${home.team.displayName}</div>
+            <div class="panel-team-name" style="color:${homeColor}">${home.team.displayName}</div>
             <div class="panel-score-display">${home.score} : ${away.score}</div>
-            <div class="panel-team-name" style="color:${FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]]}">${away.team.displayName}</div>
+            <div class="panel-team-name" style="color:${awayColor}">${away.team.displayName}</div>
         </div>
-
-        ${renderStatBar("Possession", homePoss + "%", homePoss, awayPoss + "%", FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]], FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]])}
-        ${renderStatBar("Total Shots", homeShots, calculateRatio(homeShots, awayShots), awayShots, FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]], FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]])}
-        ${renderStatBar("Shots on Target", homeSOG, calculateRatio(homeSOG, awaySOG), awaySOG, FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]], FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]])}
-        ${renderStatBar("Corners Won", homeCorners, calculateRatio(homeCorners, awayCorners), awayCorners, FLAG_COLORS[ESPN_TO_ISO[home.team.abbreviation]], FLAG_COLORS[ESPN_TO_ISO[away.team.abbreviation]])}
+        ${renderStatBar("Possession", homePoss + "%", homePoss, awayPoss + "%", homeColor, awayColor)}
+        ${renderStatBar("Total Shots", homeShots, calculateRatio(homeShots, awayShots), awayShots, homeColor, awayColor)}
+        ${renderStatBar("Shots on Target", homeSOG, calculateRatio(homeSOG, awaySOG), awaySOG, homeColor, awayColor)}
+        ${renderStatBar("Corners Won", homeCorners, calculateRatio(homeCorners, awayCorners), awayCorners, homeColor, awayColor)}
     `;
 }
 
@@ -325,13 +331,11 @@ function renderStatBar(title, leftVal, ratio, rightVal, leftColor, rightColor) {
     return `
         <div class="stat-row">
             <div class="stat-labels">
-                <span>${leftVal}</span>
-                <span class="stat-title">${title}</span>
-                <span>${rightVal}</span>
+                <span>${leftVal}</span> <span class="stat-title">${title}</span> <span>${rightVal}</span>
             </div>
             <div class="stat-bar-track">
-                <div class="stat-bar-fill" style="width: ${ratio}%; background: ${leftColor || '#ffcc00'}"></div>
-                <div class="stat-bar-fill" style="width: ${100 - ratio}%; background: ${rightColor || '#00bfff'}"></div>
+                <div class="stat-bar-fill" style="width: ${ratio}%; background: ${leftColor}"></div>
+                <div class="stat-bar-fill" style="width: ${100 - ratio}%; background: ${rightColor || 'rgba(255,255,255,0.08)'}"></div>
             </div>
         </div>
     `;
@@ -343,14 +347,11 @@ closePanelBtn.addEventListener('click', () => {
 });
 
 function drawCanvasContext() {
-    // Canvas context reset using standard coordinates to clean matching vectors
-    ctx.clearRect(0, 0, container.clientWidth, container.clientHeight);
-    const cx = container.clientWidth / 2; const cy = container.clientHeight / 2;
-    const baseRadius = Math.min(container.clientWidth, container.clientHeight);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     for (let round = 0; round < TOTAL_ROUNDS - 1; round++) {
-        const currentRadius = (RADII_PROPORTIONS[round] / 100) * baseRadius;
-        const nextRadius = (RADII_PROPORTIONS[round + 1] / 100) * baseRadius;
+        const currentRadius = (RADII_PROPORTIONS[round] / 100) * cachedBaseRadius;
+        const nextRadius = (RADII_PROPORTIONS[round + 1] / 100) * cachedBaseRadius;
         const midRadius = (currentRadius + nextRadius) / 2;
 
         bracketTree[round].forEach((node, index) => {
@@ -358,15 +359,15 @@ function drawCanvasContext() {
             const parentNode = bracketTree[round + 1][parentIndex];
 
             let points = [{ x: node.x, y: node.y }];
-            const midX1 = cx + midRadius * Math.cos(node.angle);
-            const midY1 = cy + midRadius * Math.sin(node.angle);
+            const midX1 = cachedCx + midRadius * Math.cos(node.angle + globalRotation);
+            const midY1 = cachedCy + midRadius * Math.sin(node.angle + globalRotation);
             points.push({ x: midX1, y: midY1 });
 
             const steps = 12; 
             for (let s = 1; s <= steps; s++) {
-                const interpolatedAngle = node.angle + (parentNode.angle - node.angle) * (s / steps);
-                const arcX = cx + midRadius * Math.cos(interpolatedAngle);
-                const arcY = cy + midRadius * Math.sin(interpolatedAngle);
+                const interpolatedAngle = (node.angle + globalRotation) + (parentNode.angle - node.angle) * (s / steps);
+                const arcX = cachedCx + midRadius * Math.cos(interpolatedAngle);
+                const arcY = cachedCy + midRadius * Math.sin(interpolatedAngle);
                 points.push({ x: arcX, y: arcY });
             }
             points.push({ x: parentNode.x, y: parentNode.y });
@@ -374,19 +375,19 @@ function drawCanvasContext() {
             const isWinnerTrack = (!node.isEmpty && parentNode.label === node.label);
 
             if (isWinnerTrack) {
-                const teamColor = FLAG_COLORS[node.label] || '#ffffff';
+                const teamColor = FLAG_COLORS[node.label] || '#d4af37';
                 ctx.strokeStyle = teamColor; 
-                ctx.lineWidth = 3.5 + (audioBass * 6); 
+                ctx.lineWidth = 2.0; 
                 ctx.shadowColor = teamColor; 
-                ctx.shadowBlur = 10 + (audioBass * 18); 
+                ctx.shadowBlur = 8 + (audioBass * 16); 
             } else if (node.isLive) {
-                ctx.strokeStyle = '#00bfff'; 
-                ctx.lineWidth = 2.5 + (audioBass * 4);
-                ctx.shadowColor = '#00bfff'; 
-                ctx.shadowBlur = 8 + (audioBass * 12);
+                ctx.strokeStyle = '#ffffff'; 
+                ctx.lineWidth = 2.0;
+                ctx.shadowColor = '#ffffff'; 
+                ctx.shadowBlur = 6 + (audioBass * 12);
             } else {
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.06 + (audioBass * 0.12)})`; 
-                ctx.lineWidth = 1.5 + (audioBass * 0.8);
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)'; 
+                ctx.lineWidth = 1.5;
                 ctx.shadowBlur = 0; 
             }
 
@@ -397,7 +398,6 @@ function drawCanvasContext() {
 
             ctx.beginPath();
             ctx.moveTo(points[0].x, points[0].y);
-            
             let totalSegments = points.length - 1;
             let targetSegmentCount = totalSegments * currentLineProgress;
             
@@ -407,11 +407,8 @@ function drawCanvasContext() {
                 } else {
                     let remainder = targetSegmentCount - (s - 1);
                     if (remainder > 0) {
-                        let prevP = points[s - 1];
-                        let currP = points[s];
-                        let interX = prevP.x + (currP.x - prevP.x) * remainder;
-                        let interY = prevP.y + (currP.y - prevP.y) * remainder;
-                        ctx.lineTo(interX, interY);
+                        let prevP = points[s - 1]; let currP = points[s];
+                        ctx.lineTo(prevP.x + (currP.x - prevP.x) * remainder, prevP.y + (currP.y - prevP.y) * remainder);
                     }
                     break;
                 }
@@ -424,16 +421,26 @@ function drawCanvasContext() {
 
 function animateLoadLoop() {
     if (loadProgress >= 1) {
-        loadProgress = 1;
-        isLoadAnimating = false;
-        syncLayoutPositions();
-        drawCanvasContext();
+        loadProgress = 1; isLoadAnimating = false;
+        handleDisplayResize(); masterDriverOrbitLoop(); 
         return; 
     }
-    loadProgress += 0.004; 
+    loadProgress += 0.004; masterDriverOrbitLoop();
+}
+
+function masterDriverOrbitLoop() {
+    if (!isLoadAnimating) {
+        globalRotation += ROTATION_SPEED;
+    }
     syncLayoutPositions();
-    drawCanvasContext();
-    requestAnimationFrame(animateLoadLoop);
+    if (!isAnimationLoopActive) {
+        drawCanvasContext();
+    }
+    if (!isLoadAnimating) {
+        requestAnimationFrame(masterDriverOrbitLoop);
+    } else {
+        requestAnimationFrame(animateLoadLoop);
+    }
 }
 
 function triggerParticleBlast(x, y, color) {
@@ -452,37 +459,17 @@ function animateFrameLoop() {
 }
 
 function handleDisplayResize() {
-    // FIX: Scaled drawing context allocations using high-DPI device-pixel ratios to eliminate blur on mobile viewports
     const dpr = window.devicePixelRatio || 1;
     canvas.width = container.clientWidth * dpr;
     canvas.height = container.clientHeight * dpr;
     ctx.scale(dpr, dpr);
     
+    cachedCx = container.clientWidth / 2;
+    cachedCy = container.clientHeight / 2;
+    cachedBaseRadius = Math.min(container.clientWidth, container.clientHeight);
+    
     syncLayoutPositions(); 
     drawCanvasContext();
-}
-
-if (window.wallpaperRegisterAudioListener) {
-    window.wallpaperRegisterAudioListener((audioArray) => {
-        const bassLeft = (audioArray[0] + audioArray[1] + audioArray[2] + audioArray[3]) / 4;
-        const bassRight = (audioArray[64] + audioArray[65] + audioArray[66] + audioArray[67]) / 4;
-        audioBass = (bassLeft + bassRight) / 2;
-
-        const centerGlow = document.querySelector('.center-glow');
-        if (centerGlow) {
-            centerGlow.style.transform = `scale(${1 + audioBass * 0.35})`;
-            centerGlow.style.opacity = 0.6 + audioBass * 0.4;
-        }
-
-        const centerTrophy = document.getElementById('centerTrophy');
-        if (centerTrophy) {
-            centerTrophy.style.transform = `translate(-50%, -50%) scale(${1 + audioBass * 0.12})`;
-        }
-
-        if (!isAnimationLoopActive && !isLoadAnimating) {
-            drawCanvasContext();
-        }
-    });
 }
 
 buildTreeStructure();
