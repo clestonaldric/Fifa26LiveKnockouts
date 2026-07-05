@@ -140,8 +140,7 @@ async function fetchAndApplyLiveScores() {
                         if (!comps[0] || !comps[1]) return false;
                         const t1 = ESPN_TO_ISO[comps[0].team.abbreviation];
                         const t2 = ESPN_TO_ISO[comps[1].team.abbreviation];
-                        return (evt.season.type >= 13801) && 
-                               ((t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t2 === child1.label));
+return (t1 === child1.label && t2 === child2.label) || (t1 === child2.label && t2 === child1.label);
                     });
 
                     if (match) {
