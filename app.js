@@ -295,7 +295,7 @@ const comp = match.competitions[0];
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            timeZoneName: 'short' // Appends the local zone abbreviation (like EST, BST, IST)
+            timeZoneName: 'long' // Appends the local zone abbreviation (like EST, BST, IST)
         });
     }
 
