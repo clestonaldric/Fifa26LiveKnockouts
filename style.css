@@ -69,6 +69,7 @@ body, html {
     /* ULTRA-CRITICAL SAFARI/MOBILE WEBKIT BUG FIX: */
     /* Forces iOS to clip the subpixels flawlessly without creating a ghost ring artifact */
     -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     
     color: #ffffff;
     font-size: 1.1vmin; 
@@ -93,6 +94,7 @@ body, html {
     background: rgba(20, 20, 20, 0.4) !important;
     color: rgba(255, 255, 255, 0.2);
     -webkit-mask-image: none; /* Bypass mask for empty placeholders */
+    mask-image: none;
 }
 
 /* Uses an outer spread box-shadow instead of a layout border to preserve flag image size */
